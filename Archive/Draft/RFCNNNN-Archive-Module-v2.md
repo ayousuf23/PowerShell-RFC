@@ -240,10 +240,6 @@ destination.zip
 
 #### `-Format` parameter
 
-For `Expand-Archive`, the extension of the `-Path` or `-LiteralPath` (either one is required) parameter will be looked at and the same behavior as above is exhibited.
-
-For `Expand-Archive`, when an archive format is determined by the command that does not match the format of the archive passed to it, a terminating error will be thrown.
-
 The `-Format` parameter accepts one of three options: `zip`, `tar`, or `targz`. This parameter supports tab completion.
 
 The format of the archive is determined by the extension of `-Path` or `-LiteralPath` (one of which is required) parameter or the value supplied to the `-Format` parameter. If the extension is `.zip`, `.tar`, or `.tar.gz`, the appropriate archive format is determined by the command. 
@@ -263,7 +259,9 @@ Expand-Archive -Path archive.tar -Format zip
 The archive is interpreted as a zip archive since the `-Format` parameter takes precedence over the extension of archive.tar. 
 
 
-When the `-Path` or `-Literalpath` parameters do not have a matching extension and the `-Format` parameter is not specified, by default the archive is interpeted as a zip archive.  
+When the `-Path` or `-Literalpath` parameters do not have a matching extension and the `-Format` parameter is not specified, by default the archive is interpeted as a zip archive. 
+
+For `Expand-Archive`, when an archive format is determined by the cmdlet that does not match the format of the archive passed to it, a terminating error will be thrown (e.g. if `-Format zip` is specified for a tar archive).
 
 #### `-Filter` parameter
 
