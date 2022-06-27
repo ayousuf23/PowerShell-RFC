@@ -5,7 +5,7 @@ Status: Draft
 SupercededBy: 
 Version: 1.0
 Area: Archive
-Comments Due: <Date for submitting comments to current draft (minimum 1 month)>
+Comments Due: 6/30/2022
 Plan to implement: Yes
 ---
 
@@ -31,9 +31,9 @@ Currently, archives are limited to a size of approximately 4GB.
     so that I can reliably store and deliver content while taking up less storage space.
 
     As a PowerShell user,
-    I can create an archive that preserves the relative file structure, so that I can keep track of which folders the contents of the archive came from and so that I can replicate the same structure on other computers.
+    I can create an archive that preserves the relative path structure, so that I can keep track of which folders the contents of the archive came from and so that I can replicate the same structure on other computers.
 
-Relative file structure refers to the hierarchial structure of files and folders relative to the current working directory.
+Relative path structure refers to the hierarchial structure of a path relative to the current working directory.
 
     As a PowerShell user,
     I can filter what files to include in an archive,
@@ -63,8 +63,6 @@ Compress-Archive [-DestinationPath] <string> -LiteralPath <string[]> -Update [-C
 
 ```
 
-Example of user experience with example code/script.
-Include example of input and output.
 
 ```powershell
 Compress-Archive MyFolder destination -Format zip
@@ -168,12 +166,11 @@ Compress-Archive MyFolder destination.tar -Format zip
 ```
 The zip format is chosen for the archive since the `-Format` parameter takes precedence over the extension of destination.tar. Note that `.zip` is appended to the name of the archive, which becomes `destination.tar.zip`.  
 
-
 When the `-DestinationPath` parameter does not have a matching extension and the `-Format` parameter is not specified, by default the zip format is chosen.  
 
 #### **Relative Path Structure Preservation**
 
-When valid path(s) is supplied to the `-Path` parameter, the relative structure of the path is preserved as long as the path is not absolute, and does not contain ~ or ..
+When valid path(s) is supplied to the `-Path` parameter, the relative structure of the path is preserved as long as the path is not absolute, and does not contain ~ or .. (the path can contain other wildcard characters such as *, [, ], ?, and `).
 
 Example: `Compress-Archive C:\Users\user\Documents destination.zip`
 creates an archive with the structure:
@@ -182,17 +179,62 @@ creates an archive with the structure:
 destination.zip
 |---Documents
 ```
-The grandparent and parent directories User and user are not preserved in the archive.
+The grandparent and parent directories User and user are not preserved in the archive because the path is absolute.
 
-Similarly, `Compress-Archive ~\Documents destination.zip` and `Compress-Archive C:\Users\user\..\Documents destination.zip` exhibits the same behavior.
+Similarly, `Compress-Archive ~\Documents destination.zip` and `Compress-Archive C:\Users\user\..\Documents destination.zip` exhibit the same behavior.
 
 The relative path(s) supplied to the `-Path` parameter must be relative to the current working directory.
 
 The `-Flatten` switch parameter can be used to prevent relative path structure preservation. The `-Flatten` parameter keeps the archive structure flat.
 
+Example: `Compress-Archive Documents\MyFile.txt destination.zip`
+creates an archive with the structure:
+
+```
+destination.zip
+|---Documents
+    |---MyFile.txt
+```
+
+When the `-Flatten` parameter is specified to the cmdlet above, the archive has the following structure:
+
+```
+destination.zip
+|---MyFile.txt
+```
+
 #### `-Filter` parameter
 
-When the `-Filter` parameter is supplied with a value, the cmdlet stores files in the archive that match the filter only. The exact behavior of the filter is defined by the FileSystem provider.
+When the `-Filter` parameter is supplied with a value, the cmdlet stores files in the archive that match the filter only. Directories are still archived unless they are empty or do not contain files that match the filter.
+
+If the path is a directory, the filter applies to all files in the directory no matter how deep they are in the hierarchy.
+
+The filter accepts standard PowerShell wildcard characters. The filter performs matching based on the file name, so filtering based on a path does not work.
+
+Example: `Compress-Archive Folder destination.zip -Filter /ChildFolder/*` will output an empty archive. 
+
+Example: `Compress-Archive Folder destination.zip -Filter s*` outputs an archive whose files start with s only.
+
+The filter paramater preserves the archive structure in the output -- directories in the input path(s) will be added to the archive as long as they contain at least one file after applying the filter.
+
+Example: Suppose we want to archive `Folder` which has the following structure:
+
+```
+Folder
+|---ChildFolder1
+    |---file.txt
+|---ChildFolder2
+    |---file.md
+```
+
+`Compress-Archive Folder destination.zip -Filter *.txt` creates an archive with the followng structure:
+
+```
+destination.zip
+|---Folder
+    |---ChildFolder1
+        |---file.txt
+```
 
 ### Expand-Archive
 
@@ -225,7 +267,36 @@ When the `-Path` or `-Literalpath` parameters do not have a matching extension a
 
 #### `-Filter` parameter
 
-When the `-Filter` parameter is supplied with a value, the cmdlet extracts files in the archive that match the filter only. The exact behavior of the filter is defined by the FileSystem provider.
+When the `-Filter` parameter is supplied with a value, the cmdlet extracts files in the archive that match the filter only.
+
+The filter applies to all files in the archive no matter how deep they are in the hierarchy.
+
+The filter accepts standard PowerShell wildcard characters. The filter performs matching based on the file name, so filtering based on a path does not work.
+
+Example: `Expand-Archive archive.zip -Filter /ChildFolder/*` will create a folder with the name `archive` whose contents will be empty because no filename in the archive matches the filter.
+
+Example: `Expand-Archive archive.zip -Filter s*` will create a folder with the name `archive` whose files start with s.
+
+The filter paramater preserves the archive structure in the output -- directories in the archive will be created in the output as long as they contain at least one file after applying the filter.
+
+Example: Suppose we want to expand `archive.zip` which has the following structure:
+
+```
+archive.zip
+    |---ChildFolder1
+        |---file.txt
+    |---ChildFolder2
+        |---file.md
+```
+
+`Expand-Archive archive.zip -Filter *.txt` creates a folder with the followng structure:
+
+```
+archive
+|---ChildFolder1
+    |---file.txt
+```
+
 
 #### Default output location for `Expand-Archive`
 
@@ -240,7 +311,7 @@ If the user wants to put the contents of the archive in the current working dire
 
 The enhancements discussed in this RFC depend on System.Formats.Tar v7 and System.IO.Compression .NET Framework 4.8/.NET Core 1.0+.
 
-The current plan is to support PowerShell 7. Supporting Windows PowerShell requires additional work related to managing and loading the correct assembly because the RFC requires a newer version of System.IO.Compression, and Windows PowerShell depends on an older version of it.
+The current plan is to support PowerShell 7. Supporting Windows PowerShell requires additional work related to  loading the correct assembly because the RFC requires a newer version of System.IO.Compression, and Windows PowerShell depends on an older version of it.
 
 ## Alternate Proposals and Considerations
 
